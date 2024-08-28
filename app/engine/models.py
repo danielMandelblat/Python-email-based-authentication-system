@@ -4,6 +4,7 @@ from .utils.emails import send
 from django.conf import settings
 from datetime import timedelta
 from django.db.models.functions import Now
+from os import getenv
 
 def generate_password(length: int=8)-> str:
     # add lower case chars
@@ -34,7 +35,30 @@ class SiteSettings(models.Model):
         if cls.objects.all().count() <= 0:
             cls.objects.create()
 
-        return cls.objects.all().first()
+        settings = cls.objects.all().first()
+        settings.refresh_from_db()
+        return settings
+
+    def save(self, *args, **kwargs):
+        super(SiteSettings, self).save(*args, **kwargs)
+        self.apply_settings()
+
+    @classmethod
+    def apply_settings(cls):
+        # Change settings
+        try:
+            SS = SiteSettings.get()
+            settings.EMAIL_HOST = getenv('EMAIL_HOST', SS.EMAIL_HOST)
+            settings.EMAIL_PORT = getenv('EMAIL_PORT', SS.EMAIL_PORT)
+            settings.EMAIL_USE_TLS = getenv('EMAIL_USE_TLS', SS.EMAIL_USE_TLS)
+            settings.EMAIL_HOST_USER = getenv('EMAIL_HOST_USER', SS.EMAIL_HOST_USER)
+            settings.EMAIL_HOST_PASSWORD = getenv('EMAIL_HOST_PASSWORD', SS.EMAIL_HOST_PASSWORD)
+            settings.FROM_EMAIL = getenv('FROM_EMAIL', SS.FROM_EMAIL)
+            settings.CODE_TIMEOUT = getenv('CODE_TIMEOUT', SS.CODE_TIMEOUT)
+            print("New settings has been applied!")
+        except Exception as e:
+            print(f"Error loading system settings, {e}")
+
 
 class Log(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
@@ -63,8 +87,18 @@ class Email(models.Model):
         if result.count() == 0:
             raise Exception(f"There is not active authentication process for email ({email})")
 
-        if result.first().code.strip() == code.strip():
-            print(result.first().code.strip(), code.strip())
+        auth_obj = result.first()
+
+        status = False
+        if auth_obj.code.strip() == code.strip():
+            status = True
+
+        # Save status
+        auth_obj.status = status
+        auth_obj.save()
+
+        # Return status
+        if status:
             return True
 
         raise Exception(f"Code ({code}) is not valid for email {email}")
@@ -78,7 +112,7 @@ class Authentication(models.Model):
     update_date = models.DateTimeField(auto_now_add=True)
     email = models.ForeignKey('Email', null=False, blank=False, on_delete=models.CASCADE)
     code = models.CharField(max_length=250, null=True, blank=True)
-    status = models.BooleanField(null=True, blank=True)
+    status = models.BooleanField(null=True, blank=True, help_text='Authentication status')
     ip_address = models.CharField(null=False, blank=False, max_length=250)
     active = models.BooleanField(null=True, blank=True, default=True)
 
@@ -100,14 +134,3 @@ class Authentication(models.Model):
 
     def __str__(self):
         return f"{self.created_date} | {self.email} | {self.code}"
-
-
-# Change settings
-try:
-    SS = SiteSettings.get()
-    settings.EMAIL_HOST = SS.EMAIL_HOST
-    settings.EMAIL_PORT = SS.EMAIL_PORT
-    settings.EMAIL_USE_TLS = SS.EMAIL_USE_TLS
-    settings.FROM_EMAIL = SS.FROM_EMAIL
-except Exception as e:
-    print(e)
