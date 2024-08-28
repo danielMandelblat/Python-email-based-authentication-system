@@ -34,7 +34,7 @@ def home(request):
 def start(request):
     if request.method == "POST":
         status = False
-
+        process_id = None
         # Make validations
         if 'email' not in request.POST:
             message = 'Please send <email> inside the POST request!'
@@ -51,6 +51,7 @@ def start(request):
                 auth.send_email()
 
                 status = True
+                process_id = auth.process_id
                 message = f"Authentication code will be send to ({request.POST['email']}) email address."
             except Exception as e:
                 message = str(e)
@@ -62,13 +63,14 @@ def start(request):
 
         return JsonResponse({
             "status": status,
-            'message': message
+            "message": message,
+            "process_id": process_id
         })
 
     return HttpResponse("Only Post request is valid!")
 
 @csrf_exempt
-def auth(request, interactive=False):
+def auth(request):
     if request.method != 'POST':
         return HttpResponse("Only Post requests are valid!")
 
@@ -92,4 +94,39 @@ def auth(request, interactive=False):
     return JsonResponse({
         'status': status,
         'message': message
+    })
+
+def confirm(request):
+    id = request.GET.get("id")
+    code = request.GET.get("code")
+
+    auth_obj = Authentication.objects.get(process_id=id)
+
+    if auth_obj.status == True:
+        message = f"Authentication ({id}) already completed successfully on {auth_obj.created_date}"
+    elif auth_obj.status == False:
+        message = f"Authentication ({id}) is not valid anymore!"
+    elif auth_obj.status == None:
+        print(str(auth_obj.code) == code)
+        print(str(auth_obj.code), code)
+
+        if str(auth_obj.code) == code:
+            message = f"Authentication ({id}) completed successfully!"
+            auth_obj.status = True
+            auth_obj.save()
+        else:
+            message = f"Authentication ({id}) failed since the sent code is not valid!"
+    else:
+        message = "Process failure"
+
+    return HttpResponse(message)
+
+def status(request):
+    id = request.GET.get("id")
+    auth_obj = Authentication.objects.get(process_id=id)
+
+
+    return JsonResponse({
+        'id': id,
+        'status': auth_obj.status
     })

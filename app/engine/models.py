@@ -5,21 +5,7 @@ from django.conf import settings
 from datetime import timedelta
 from django.db.models.functions import Now
 from os import getenv
-
-def generate_password(length: int=8)-> str:
-    # add lower case chars
-    lower  = [random.choice(string.ascii_lowercase) for i in range(length)]
-    # add digit chars
-    digit  = [random.choice(string.digits) for i in range(length)]
-    # add upper case chars
-    upper  = [random.choice(string.ascii_uppercase) for i in range(length)]
-    # add symbols
-    symbol = [random.choice(["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "-", "+", "=", ".", ",", "?"]) for i in range(length)]
-    # store random generated lists to a variable
-    original = lower+digit+upper+symbol
-    # shuffle stored data in place
-    random.shuffle(original)
-    return ''.join(original)
+from uuid import uuid4
 
 class SiteSettings(models.Model):
     EMAIL_HOST = models.CharField(max_length=55, default='smtp3.danielmandelblat.com', null=True, blank=True)
@@ -111,10 +97,11 @@ class Authentication(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
     update_date = models.DateTimeField(auto_now_add=True)
     email = models.ForeignKey('Email', null=False, blank=False, on_delete=models.CASCADE)
-    code = models.CharField(max_length=250, null=True, blank=True)
+    code = models.UUIDField(default=uuid4, null=False, blank=False)
     status = models.BooleanField(null=True, blank=True, help_text='Authentication status')
     ip_address = models.CharField(null=False, blank=False, max_length=250)
     active = models.BooleanField(null=True, blank=True, default=True)
+    process_id = models.URLField(default=uuid4, null=False, blank=False)
 
     def reset_all_requests(self):
         Authentication.objects.filter(email=self.email).update(active=False)
@@ -124,13 +111,12 @@ class Authentication(models.Model):
         # Reset all previous requests
         self.reset_all_requests()
         self.active = True
-        self.code = generate_password()
         self.save()
 
         return self.code
 
     def send_email(self):
-        send(self.email.email, self.code)
+        send(email=self.email.email, code=self.code, uuid=self.process_id)
 
     def __str__(self):
         return f"{self.created_date} | {self.email} | {self.code}"

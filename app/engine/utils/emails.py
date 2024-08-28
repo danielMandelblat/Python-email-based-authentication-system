@@ -1,12 +1,19 @@
 from django.conf import settings
-from django.core.mail import send_mail
-from datetime import datetime
+import socket
 
-def send(email: str, code: str):
+hostname = socket.gethostname()
+IPAddr = socket.gethostbyname(hostname)
+
+
+from django.core import mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+
+def send(email: str, code: str, uuid):
     subject = 'Authentication Code'
-    message = f'Hi {email}, your authentication code is: {code}'
-    email_from = settings.FROM_EMAIL
-    recipient_list = [email, ]
-    send_mail(subject, message, email_from, recipient_list )
+    html_message = render_to_string('mail_template.html', {'email': email, 'code': code, 'uuid': uuid, 'ip': IPAddr})
+    plain_message = strip_tags(html_message)
+    from_email = settings.FROM_EMAIL
+    to = email
 
-    print(f"{datetime.now()} | Email was sent ({email}|{code})")
+    mail.send_mail(subject, plain_message, from_email, [to], html_message=html_message)
