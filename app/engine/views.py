@@ -68,7 +68,7 @@ def start(request):
     return HttpResponse("Only Post request is valid!")
 
 @csrf_exempt
-def auth(request):
+def auth(request, interactive=False):
     if request.method != 'POST':
         return HttpResponse("Only Post requests are valid!")
 
