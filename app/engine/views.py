@@ -35,6 +35,7 @@ def start(request):
     if request.method == "POST":
         status = False
         process_id = None
+
         # Make validations
         if 'email' not in request.POST:
             message = 'Please send <email> inside the POST request!'
@@ -107,9 +108,6 @@ def confirm(request):
     elif auth_obj.status == False:
         message = f"Authentication ({id}) is not valid anymore!"
     elif auth_obj.status == None:
-        print(str(auth_obj.code) == code)
-        print(str(auth_obj.code), code)
-
         if str(auth_obj.code) == code:
             message = f"Authentication ({id}) completed successfully!"
             auth_obj.status = True
@@ -118,6 +116,7 @@ def confirm(request):
             message = f"Authentication ({id}) failed since the sent code is not valid!"
     else:
         message = "Process failure"
+
 
     return HttpResponse(message)
 
