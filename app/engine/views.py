@@ -1,4 +1,4 @@
-from django.shortcuts import HttpResponse
+from django.shortcuts import HttpResponse, render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Email, Log, Authentication
@@ -100,25 +100,34 @@ def auth(request):
 def confirm(request):
     id = request.GET.get("id")
     code = request.GET.get("code")
-
     auth_obj = Authentication.objects.get(process_id=id)
+    message = ""
 
     if auth_obj.status == True:
         message = f"Authentication ({id}) already completed successfully on {auth_obj.created_date}"
     elif auth_obj.status == False:
         message = f"Authentication ({id}) is not valid anymore!"
     elif auth_obj.status == None:
-        if str(auth_obj.code) == code:
-            message = f"Authentication ({id}) completed successfully!"
-            auth_obj.status = True
-            auth_obj.save()
-        else:
-            message = f"Authentication ({id}) failed since the sent code is not valid!"
+        post_code = request.POST.get('code')
+        if request.method == "POST":
+            if str(auth_obj.code) == post_code:
+                message = f"Authentication ({id}) completed successfully!"
+                auth_obj.status = True
+                auth_obj.save()
+            else:
+                message = f"Authentication ({id}) failed since the sent code is not valid!"
     else:
         message = "Process failure"
 
+    context = {
+        'status': auth_obj.status,
+        "code": code,
+        'id': id,
+        'message': message
+    }
 
-    return HttpResponse(message)
+    return render(request, "confirmation.html", context=context)
+    #return HttpResponse(message)
 
 def status(request):
     id = request.GET.get("id")

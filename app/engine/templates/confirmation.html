@@ -2,9 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Confirmation Page</title>
 </head>
 <body>
+    {%if status == None%}
+        <form method="post">
+            {%csrf_token%}
+          <div class="form-group">
+            <label for="exampleInputEmail1">ID</label>
+            <input type="text" class="form-control" id="" aria-describedby="" name="id" value="{{id}}" disabled>
+          </div>
+          <div class="form-group">
+            <label for="exampleInputEmail1">Code</label>
+            <input type="text" class="form-control" id="" aria-describedby="" name="code" value="{{code}}">
+          </div>
 
+          <button type="submit" name="confirm" value="true" class="btn btn-primary">Confirm</button>
+        </form>
+    {%else%}
+        {{message}}
+    {%endif%}
 </body>
 </html>
